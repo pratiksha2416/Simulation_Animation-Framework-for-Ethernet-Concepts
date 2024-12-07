@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packet Transfer Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            text-align: center;
+            padding: 20px;
+            color: #333;
+        }
+
+        h1 {
+            color: #00509e;
+        }
+
+        .form-container {
+            margin-bottom: 20px;
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(49, 62, 57, 0.1);
+            width: 400px;
+            margin: 0 auto;
+            border: 2px solid #000000;
+        }
+
+        .form-container label,
+        .form-container input {
+            display: block;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        input[type="number"] {
+            padding: 10px;
+            width: 95%;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        button {
+            padding: 10px;
+            width: 48%;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #0c0c0c;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #060606;
+        }
+
+        .status {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-top: 20px;
+        }
+
+        canvas {
+            border: 2px solid #000000;
+            background: #e3f2fd;
+            display: block;
+            margin: 30px auto;
+            border-radius: 10px;
+            height: 300px;
+        }
+
+        .router-icon {
+            width: 50px;
+            height: 50px;
+        }
+
+        .router-label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Packet Transfer Simulation</h1>
+
+    <div class="form-container">
+        <!-- <label for="packetSize">Packet Size (Bytes):</label> -->
+        <input type="number" id="packetSize" placeholder="Packet Size (Bytes) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; e.g, 1024" min="1">
+        
+        <!-- <label for="bandwidth">Bandwidth (Mbps):</label> -->
+        <input type="number" id="bandwidth" placeholder="Bandwidth (Mbps) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; e.g, 10" min="1">
+
+        <div class="button-container">
+            <button onclick="startTransfer()">Start Transfer</button>
+            <button onclick="resetSimulation()">Reset</button>
+        </div>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <canvas id="networkCanvas" width="800" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('networkCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Define router positions and icons
+        const routers = [
+            { x: 200, y: 200, name: "Router 1", icon: "https://img.icons8.com/ios-filled/50/000000/router.png" },
+            { x: 600, y: 200, name: "Router 2", icon: "https://img.icons8.com/ios-filled/50/000000/router.png" }
+        ];
+
+        let animationProgress = 0;
+        let animationInterval;
+        let transferSpeed;
+
+        // Function to draw routers and connection
+        function drawNetwork() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw connection between routers
+            ctx.beginPath();
+            ctx.moveTo(routers[0].x, routers[0].y);
+            ctx.lineTo(routers[1].x, routers[1].y);
+            ctx.strokeStyle = 'gray';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Draw router icons
+            routers.forEach(router => {
+                const img = new Image();
+                img.src = router.icon;
+                img.onload = () => {
+                    ctx.drawImage(img, router.x - 25, router.y - 25, 50, 50);
+                };
+
+                ctx.fillStyle = 'black';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(router.name, router.x, router.y + 40);
+            });
+        }
+
+        // Function to draw packet at specific progress
+        function drawPacket(progress) {
+            const x = routers[0].x + (routers[1].x - routers[0].x) * progress;
+            const y = routers[0].y + (routers[1].y - routers[0].y) * progress;
+
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, 2 * Math.PI);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+        }
+
+        // Function to start animation of packet transfer
+        function startAnimation() {
+            animationProgress = 0;
+            animationInterval = setInterval(() => {
+                animationProgress += transferSpeed;
+
+                if (animationProgress >= 1) {
+                    clearInterval(animationInterval);
+                    document.getElementById('status').innerText = "Packet Transfer Completed!";
+                    return;
+                }
+
+                drawNetwork();
+                drawPacket(animationProgress);
+            }, 20);
+        }
+
+        // Function to calculate delay and start the packet transfer
+        function startTransfer() {
+            const packetSize = parseInt(document.getElementById('packetSize').value);
+            const bandwidth = parseInt(document.getElementById('bandwidth').value) * 1000; // Convert Mbps to Kbps
+
+            if (isNaN(packetSize) || isNaN(bandwidth) || packetSize <= 0 || bandwidth <= 0) {
+                document.getElementById('status').innerText = "Please enter valid packet size and bandwidth.";
+                return;
+            }
+
+            // Calculate transfer speed and delay
+            const delay = (packetSize * 8) / bandwidth; // Delay = size in bits / bandwidth in kbps
+            transferSpeed = 1 / (delay * 50); // Speed inversely proportional to delay
+            transferSpeed = Math.min(0.1, transferSpeed); // Limit the speed for better visibility
+
+            document.getElementById('status').innerText = `Calculated Delay: ${delay.toFixed(2)} ms`;
+
+            // Start the animation
+            startAnimation();
+        }
+
+        // Function to reset the simulation
+        function resetSimulation() {
+            // Reset form values
+            document.getElementById('packetSize').value = '';
+            document.getElementById('bandwidth').value = '';
+            document.getElementById('status').innerText = '';
+
+            // Clear canvas and reset animation progress
+            clearInterval(animationInterval);
+            animationProgress = 0;
+            drawNetwork();
+        }
+
+        // Initial network setup
+        drawNetwork();
+    </script>
+</body>
+</html>
